@@ -28,10 +28,10 @@ TRACK = 'alpha'  # Can be 'alpha', beta', 'production' or 'rollout'
 argparser = argparse.ArgumentParser(add_help=False)
 argparser.add_argument('package_name',
                        help='The package name. Example: com.android.sample')
-argparser.add_argument('apks_path',
+argparser.add_argument('apk_file',
                        nargs='?',
-                       default='/apks',
-                       help='The path to the APKs files to upload.')
+                       default='/home/aviel/bills/Bills/app/dev/release/app-dev-armeabi-release.apk',
+                       help='The path to the APK file to upload.')
 
 
 def main(argv):
@@ -46,46 +46,48 @@ def main(argv):
 
     # Process flags and read their values.
     package_name = flags.package_name
-    apks_path = flags.apks_path
+    apk_file = flags.apk_file
 
-    for file in os.listdir(apks_path):
-        if file.endswith(".apk"):
-            try:
-                edit_request = service.edits().insert(body={}, packageName=package_name)
-                result = edit_request.execute()
-                edit_id = result['id']
+    # for file in os.listdir(apk_file):
+    #     if file.endswith(".apk"):
+    try:
+        edit_request = service.edits().insert(body={}, packageName=package_name)
+        result = edit_request.execute()
+        edit_id = result['id']
 
-                apk_response = service.edits().apks().upload(
-                    editId=edit_id,
-                    packageName=package_name,
-                    media_body=os.path.join(apks_path, file)).execute()
+        apk_response = service.edits().apks().upload(
+            editId=edit_id,
+            packageName=package_name,
+            media_body=apk_file).execute()
+        # media_body = os.path.join(apk_file, file)).execute()
 
-                print 'Version code %d has been uploaded' % apk_response['versionCode']
+        print 'Version code %d has been uploaded' % apk_response['versionCode']
 
-                track_response = service.edits().tracks().update(
-                    editId=edit_id,
-                    track=TRACK,
-                    packageName=package_name,
-                    body={u'releases': [{
-                        u'name': u'My first API release with release notes',
-                        u'versionCodes': [apk_response['versionCode']],
-                        # u'releaseNotes': [
-                        #     {u'recentChanges': u'Apk recent changes in en-US'},
-                        # ],
-                        u'status': u'completed',
-                    }]}).execute()
+        track_response = service.edits().tracks().update(
+            editId=edit_id,
+            track=TRACK,
+            packageName=package_name,
+            body={u'releases': [{
+                u'name': u'My first API release with release notes',
+                u'versionCodes': [apk_response['versionCode']],
+                # u'releaseNotes': [
+                #     {u'recentChanges': u'Apk recent changes in en-US'},
+                # ],
+                u'status': u'completed',
+            }]}).execute()
 
-                print 'Track %s is set with releases: %s' % (
-                    track_response['track'], str(track_response['releases']))
+        print 'Track %s is set with releases: %s' % (
+            track_response['track'], str(track_response['releases']))
 
-                commit_request = service.edits().commit(
-                    editId=edit_id, packageName=package_name).execute()
+        commit_request = service.edits().commit(
+            editId=edit_id, packageName=package_name).execute()
 
-                print 'Edit "%s" has been committed' % (commit_request['id'])
+        print 'Edit "%s" has been committed' % (commit_request['id'])
 
-            except client.AccessTokenRefreshError:
-                print ('The credentials have been revoked or expired, please re-run the '
-                       'application to re-authorize')
+    except client.AccessTokenRefreshError:
+        print ('The credentials have been revoked or expired, please re-run the '
+               'application to re-authorize')
+
 
 if __name__ == '__main__':
     main(sys.argv)
